@@ -1,4 +1,3 @@
-
 import streamlit as st
 import sqlite3
 from datetime import datetime
@@ -74,22 +73,16 @@ else:
 
     # Papar modul berdasarkan pilihan
     if pilihan == "📂 Paparan Senarai Subjek":
-        st.experimental_set_query_params(page="1_lihat_subjek")
         st.switch_page("pages/1_lihat_subjek.py")
     elif pilihan == "📄 Paparan Fail Subjek":
-        st.experimental_set_query_params(page="4_paparan_fail")
         st.switch_page("pages/4_paparan_fail.py")
     elif pilihan == "📤 Muat Naik Fail":
-        st.experimental_set_query_params(page="2_muat_naik_fail")
         st.switch_page("pages/2_muat_naik_fail.py")
     elif pilihan == "⚙️ Panel Admin":
-        st.experimental_set_query_params(page="5_admin_panel")
         st.switch_page("pages/5_admin_panel.py")
     elif pilihan == "📦 Muat Turun Semua":
-        st.experimental_set_query_params(page="6_muat_turun_zip")
         st.switch_page("pages/6_muat_turun_zip.py")
     elif pilihan == "🔒 Tukar Katalaluan":
-        st.experimental_set_query_params(page="7_tukar_katalaluan")
         st.switch_page("pages/7_tukar_katalaluan.py")
 
     if st.button("Log Keluar"):
