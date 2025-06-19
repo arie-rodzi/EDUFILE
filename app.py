@@ -51,25 +51,38 @@ if not st.session_state.logged_in:
                 st.error("ID atau Katalaluan salah. Sila cuba lagi.")
 else:
     st.sidebar.success(f"Log Masuk sebagai: {st.session_state.user_name} ({st.session_state.user_role})")
-    pilihan = st.sidebar.radio("Navigasi", [
-        "📂 Paparan Senarai Subjek",
-        "📄 Paparan Fail Subjek"
-    ])
 
-    # Akses tambahan untuk LIC
-    if st.session_state.user_role == "staff":
+    # Navigasi berdasarkan peranan
+    if st.session_state.user_role == "admin":
+        pilihan = st.sidebar.radio("Navigasi", [
+            "📂 Paparan Senarai Subjek",
+            "📄 Paparan Fail Subjek",
+            "⚙️ Panel Admin",
+            "📦 Muat Turun Semua",
+            "🔒 Tukar Katalaluan"
+        ], key="admin_menu")
+
+    elif st.session_state.user_role == "staff":
         conn = create_connection()
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM subjects WHERE lic_staff_id=?", (st.session_state.user_id,))
         is_lic = c.fetchone()[0] > 0
         conn.close()
 
+        staff_menu = [
+            "📂 Paparan Senarai Subjek",
+            "📄 Paparan Fail Subjek"
+        ]
         if is_lic:
-            pilihan = st.sidebar.radio("", [pilihan, "📤 Muat Naik Fail"])
+            staff_menu.append("📤 Muat Naik Fail")
 
-    # Akses tambahan untuk admin
-    if st.session_state.user_role == "admin":
-        pilihan = st.sidebar.radio("", [pilihan, "⚙️ Panel Admin", "📦 Muat Turun Semua", "🔒 Tukar Katalaluan"])
+        pilihan = st.sidebar.radio("Navigasi", staff_menu, key="staff_menu")
+
+    else:
+        pilihan = st.sidebar.radio("Navigasi", [
+            "📂 Paparan Senarai Subjek",
+            "📄 Paparan Fail Subjek"
+        ], key="default_menu")
 
     # Papar modul berdasarkan pilihan
     if pilihan == "📂 Paparan Senarai Subjek":
