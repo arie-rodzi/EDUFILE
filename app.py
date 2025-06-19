@@ -97,4 +97,4 @@ else:
         st.session_state.user_id = ""
         st.session_state.user_name = ""
         st.session_state.user_role = ""
-        st.experimental_rerun()
+        st.rerun()
