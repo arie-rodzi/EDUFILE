@@ -47,7 +47,7 @@ if not st.session_state.logged_in:
                 st.session_state.user_name = user[1]
                 st.session_state.user_role = user[2]
                 st.success(f"Selamat datang, {user[1]} ({user[2]})")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("ID atau Katalaluan salah. Sila cuba lagi.")
 else:
