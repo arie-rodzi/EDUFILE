@@ -5,9 +5,10 @@ from datetime import datetime
 # Konfigurasi halaman
 st.set_page_config(page_title="EDUFILE – FSKM UiTM Seremban", layout="wide")
 
-# Sambungan ke pangkalan data
+# Fail pangkalan data
 DB_PATH = "database/fskm_course_filing.db"
 
+# Fungsi sambungan ke pangkalan data
 def create_connection():
     return sqlite3.connect(DB_PATH, check_same_thread=False)
 
@@ -23,14 +24,14 @@ def login(user_id, password):
 # Tajuk utama
 st.title("📚 EDUFILE – FSKM UiTM Seremban")
 
-# Simpan status log masuk dalam session
+# Inisialisasi session_state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = ""
     st.session_state.user_name = ""
     st.session_state.user_role = ""
 
-# Borang log masuk
+# Halaman Log Masuk
 if not st.session_state.logged_in:
     st.subheader("Log Masuk Pengguna")
     with st.form("login_form"):
@@ -49,10 +50,14 @@ if not st.session_state.logged_in:
                 st.rerun()
             else:
                 st.error("ID atau Katalaluan salah. Sila cuba lagi.")
-else:
-    st.sidebar.success(f"Log Masuk sebagai: {st.session_state.user_name} ({st.session_state.user_role})")
 
-    # Navigasi berdasarkan peranan
+# Halaman Selepas Log Masuk
+else:
+    with st.sidebar:
+        st.markdown(f"👤 **{st.session_state.user_name}** ({st.session_state.user_role})")
+        st.markdown("---")
+
+    # Navigasi ikut peranan
     if st.session_state.user_role == "admin":
         pilihan = st.sidebar.radio("Navigasi", [
             "📂 Paparan Senarai Subjek",
@@ -84,7 +89,7 @@ else:
             "📄 Paparan Fail Subjek"
         ], key="default_menu")
 
-    # Papar modul berdasarkan pilihan
+    # Navigasi halaman
     if pilihan == "📂 Paparan Senarai Subjek":
         st.switch_page("pages/1_lihat_subjek.py")
     elif pilihan == "📄 Paparan Fail Subjek":
@@ -98,9 +103,10 @@ else:
     elif pilihan == "🔒 Tukar Katalaluan":
         st.switch_page("pages/7_tukar_katalaluan.py")
 
-    if st.button("Log Keluar"):
-        st.session_state.logged_in = False
-        st.session_state.user_id = ""
-        st.session_state.user_name = ""
-        st.session_state.user_role = ""
-        st.rerun()
+    # Log Keluar (sentiasa di sidebar)
+    with st.sidebar:
+        st.markdown("---")
+        if st.button("🚪 Log Keluar"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
