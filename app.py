@@ -1,22 +1,28 @@
 import streamlit as st
 import sqlite3
+import hashlib
 from datetime import datetime
 
 # Konfigurasi halaman
 st.set_page_config(page_title="EDUFILE – FSKM UiTM Seremban", layout="wide")
 
-# Fail pangkalan data
-DB_PATH = "database/fskm_course_filing.db"
+# Laluan fail DB baharu
+DB_PATH = "database/edufile.db"
 
-# Fungsi sambungan ke pangkalan data
+# Fungsi sambungan ke DB
 def create_connection():
     return sqlite3.connect(DB_PATH, check_same_thread=False)
 
-# Fungsi semak log masuk
-def login(user_id, password):
+# Fungsi untuk hash katalaluan
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Fungsi login disemak semula
+def login(username, password):
     conn = create_connection()
     c = conn.cursor()
-    c.execute("SELECT user_id, name, role FROM users WHERE user_id=? AND password=?", (user_id, password))
+    hashed = hash_password(password)
+    c.execute("SELECT user_id, username, name, role, force_change FROM users WHERE username=? AND password_hash=?", (username, hashed))
     result = c.fetchone()
     conn.close()
     return result
@@ -24,70 +30,73 @@ def login(user_id, password):
 # Tajuk utama
 st.title("📚 EDUFILE – FSKM UiTM Seremban")
 
-# Inisialisasi session_state
+# Inisialisasi sesi
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = ""
+    st.session_state.username = ""
     st.session_state.user_name = ""
     st.session_state.user_role = ""
+    st.session_state.force_change = 0
 
 # Halaman Log Masuk
 if not st.session_state.logged_in:
-    st.subheader("Log Masuk Pengguna")
+    st.subheader("🔐 Log Masuk Pengguna")
     with st.form("login_form"):
-        user_id = st.text_input("ID Pengguna")
-        password = st.text_input("Katalaluan", type="password")
+        username = st.text_input("🆔 ID Pengguna (Username)")
+        password = st.text_input("🔑 Katalaluan", type="password")
         submitted = st.form_submit_button("Log Masuk")
 
         if submitted:
-            user = login(user_id, password)
+            user = login(username, password)
             if user:
                 st.session_state.logged_in = True
                 st.session_state.user_id = user[0]
-                st.session_state.user_name = user[1]
-                st.session_state.user_role = user[2]
-                st.success(f"Selamat datang, {user[1]} ({user[2]})")
-                st.rerun()
-            else:
-                st.error("ID atau Katalaluan salah. Sila cuba lagi.")
+                st.session_state.username = user[1]
+                st.session_state.user_name = user[2]
+                st.session_state.user_role = user[3]
+                st.session_state.force_change = user[4]
 
-# Halaman Selepas Log Masuk
+                st.success(f"Selamat datang, {user[2]} ({user[3]})")
+
+                if user[4] == 1:
+                    st.warning("⚠️ Anda perlu menukar katalaluan terlebih dahulu.")
+                    st.switch_page("pages/7_tukar_katalaluan.py")
+                else:
+                    st.rerun()
+            else:
+                st.error("❌ ID Pengguna atau Katalaluan tidak sah.")
+
+# Selepas log masuk
 else:
     with st.sidebar:
         st.markdown(f"👤 **{st.session_state.user_name}** ({st.session_state.user_role})")
         st.markdown("---")
 
+    role = st.session_state.user_role.upper()
+
     # Navigasi ikut peranan
-    if st.session_state.user_role == "admin":
+    if role == "ADMIN":
         pilihan = st.sidebar.radio("Navigasi", [
             "📂 Paparan Senarai Subjek",
             "📄 Paparan Fail Subjek",
             "⚙️ Panel Admin",
             "📦 Muat Turun Semua",
             "🔒 Tukar Katalaluan"
-        ], key="admin_menu")
-
-    elif st.session_state.user_role == "staff":
-        conn = create_connection()
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM subjects WHERE lic_staff_id=?", (st.session_state.user_id,))
-        is_lic = c.fetchone()[0] > 0
-        conn.close()
-
-        staff_menu = [
+        ])
+    elif role in ["RP", "LIC"]:
+        pilihan = st.sidebar.radio("Navigasi", [
             "📂 Paparan Senarai Subjek",
-            "📄 Paparan Fail Subjek"
-        ]
-        if is_lic:
-            staff_menu.append("📤 Muat Naik Fail")
-
-        pilihan = st.sidebar.radio("Navigasi", staff_menu, key="staff_menu")
-
+            "📄 Paparan Fail Subjek",
+            "📤 Muat Naik Fail",
+            "📦 Muat Turun Semua",
+            "🔒 Tukar Katalaluan"
+        ])
     else:
         pilihan = st.sidebar.radio("Navigasi", [
             "📂 Paparan Senarai Subjek",
             "📄 Paparan Fail Subjek"
-        ], key="default_menu")
+        ])
 
     # Navigasi halaman
     if pilihan == "📂 Paparan Senarai Subjek":
@@ -103,7 +112,7 @@ else:
     elif pilihan == "🔒 Tukar Katalaluan":
         st.switch_page("pages/7_tukar_katalaluan.py")
 
-    # Log Keluar (sentiasa di sidebar)
+    # Butang Log Keluar
     with st.sidebar:
         st.markdown("---")
         if st.button("🚪 Log Keluar"):
