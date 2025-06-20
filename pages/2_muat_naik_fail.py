@@ -37,14 +37,38 @@ if not subject_dict:
 
 # Borang muat naik
 selected_code = st.selectbox("🎓 Pilih Subjek", list(subject_dict.keys()), format_func=lambda x: f"{x} - {subject_dict[x]}")
-file_type = st.selectbox("📁 Jenis Fail", ["1. Pelan Pengajian", "2. Silibus", "3. Jadual Spesifikasi", "4. EES", "5. Penilaian Berterusan", "6. Peperiksaan Akhir", "7. Analisis CDL–CQI"])
-file_description = st.text_input("📝 Tajuk Fail / Keterangan", placeholder="Contoh: Assignment 1, Kuiz Topik 2")
+
+main_category = st.selectbox("📁 Kategori Fail", [
+    "1. Pelan Pengajian",
+    "2. Silibus",
+    "3. Jadual Spesifikasi",
+    "4. EES",
+    "5. Penilaian Berterusan",
+    "6. Peperiksaan Akhir",
+    "7. Analisis CDL–CQI"
+])
+
+# Subkategori mengikut pilihan
+sub_category = ""
+if main_category == "2. Silibus":
+    sub_category = st.selectbox("📑 Subkategori Silibus", ["Course Information", "Scheme of Work", "Student Learning Time"])
+elif main_category == "5. Penilaian Berterusan":
+    sub_category = st.selectbox("📑 Subkategori PBS", ["Kuiz", "Ujian", "Tugasan", "Rubrik"])
+elif main_category == "7. Analisis CDL–CQI":
+    sub_category = st.text_input("📑 Seksyen/Kelas", placeholder="Contoh: CS241-S1")
+else:
+    sub_category = ""
+
+# Input tajuk fail dan fail PDF
+file_description = st.text_input("📝 Tajuk Fail / Keterangan", placeholder="Contoh: Kuiz Topik 2, Assignment 1")
 uploaded_file = st.file_uploader("📤 Pilih Fail PDF", type=["pdf"])
 
 if uploaded_file and file_description and st.button("Muat Naik"):
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     clean_desc = file_description.replace(" ", "_").replace("/", "_")
-    filename = f"{selected_code}_{file_type.split('.')[0]}_{clean_desc}_{timestamp}.pdf"
+    main_code = main_category.split(".")[0]
+    full_category = main_category if not sub_category else f"{main_category} – {sub_category}"
+    filename = f"{selected_code}_{main_code}_{clean_desc}_{timestamp}.pdf"
     filepath = os.path.join(UPLOAD_DIR, filename)
 
     # Simpan fail fizikal
@@ -56,7 +80,9 @@ if uploaded_file and file_description and st.button("Muat Naik"):
         INSERT INTO uploads (subject_code, category, file_name, uploader, upload_time)
         VALUES (?, ?, ?, ?, ?)
     """, (
-        selected_code, file_type, filename,
+        selected_code,
+        full_category,
+        filename,
         st.session_state.username,
         datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
