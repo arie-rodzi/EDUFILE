@@ -29,7 +29,6 @@ if not subject_dict:
 selected_code = st.selectbox("Pilih Subjek", list(subject_dict.keys()), format_func=lambda x: f"{x} - {subject_dict[x]}")
 file_type = st.selectbox("Jenis Fail", ["RPS", "RPH", "Rubrik", "Nota", "Soalan", "Kuiz", "Ujian", "Assignment"])
 file_description = st.text_input("Tajuk Fail / Keterangan", placeholder="Contoh: Assignment 1, Kuiz Topik 2")
-
 uploaded_file = st.file_uploader("Pilih Fail PDF", type=["pdf"])
 
 if uploaded_file and file_description and st.button("Muat Naik"):
@@ -62,10 +61,23 @@ df_uploaded = c.execute("""
     WHERE subject_code = ? AND uploaded_by = ?
 """, (selected_code, st.session_state.username)).fetchall()
 
-if df_uploaded:
-    for ftype, fname, uploaded_at in df_uploaded:
-        st.markdown(f"- **{ftype}**: `{fname}` *(Dimuat naik pada {uploaded_at})*")
-else:
-    st.info("Tiada fail dimuat naik untuk subjek ini.")
+# Semakan status lengkap
+required_types = ["RPS", "RPH", "Rubrik", "Nota", "Soalan", "Kuiz", "Ujian", "Assignment"]
+uploaded_types = set(row[0] for row in df_uploaded)
+
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("#### ✅ Status Fail Subjek")
+    for ft in required_types:
+        status = "✅" if ft in uploaded_types else "❌"
+        st.markdown(f"- **{ft}**: {status}")
+
+with col2:
+    st.markdown("#### 📊 Fail Dimuat Naik")
+    if df_uploaded:
+        for ftype, fname, uploaded_at in df_uploaded:
+            st.markdown(f"- **{ftype}**: `{fname}` *(Dimuat naik: {uploaded_at})*")
+    else:
+        st.info("Tiada fail dimuat naik untuk subjek ini.")
 
 conn.close()
