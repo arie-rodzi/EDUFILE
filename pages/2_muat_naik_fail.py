@@ -16,18 +16,13 @@ def create_connection():
 conn = create_connection()
 c = conn.cursor()
 
-# Semak login
-if "username" not in st.session_state or not st.session_state.logged_in:
+# Semak log masuk
+if "user_id" not in st.session_state or not st.session_state.logged_in:
     st.warning("Sila log masuk terlebih dahulu.")
     st.stop()
 
-# Semak peranan
-if st.session_state.user_role != "LIC":
-    st.warning("Modul ini hanya untuk pengguna dengan peranan LIC.")
-    st.stop()
-
-# Dapatkan subjek yang diurus oleh LIC ini
-c.execute("SELECT subject_code, subject_name FROM subjects WHERE lecturer_username = ? AND role = 'LIC'", (st.session_state.username,))
+# Dapatkan subjek LIC
+c.execute("SELECT subject_code, subject_name FROM subjects WHERE lic_staff_id = ?", (st.session_state.user_id,))
 subjects = c.fetchall()
 subject_dict = {code: name for code, name in subjects}
 
@@ -35,61 +30,49 @@ if not subject_dict:
     st.warning("Anda tidak mempunyai subjek yang ditugaskan sebagai LIC.")
     st.stop()
 
-# Borang muat naik
-selected_code = st.selectbox("🎓 Pilih Subjek", list(subject_dict.keys()), format_func=lambda x: f"{x} - {subject_dict[x]}")
+selected_code = st.selectbox("📘 Pilih Subjek", list(subject_dict.keys()), format_func=lambda x: f"{x} – {subject_dict[x]}")
 
-main_category = st.selectbox("📁 Kategori Fail", [
-    "1. Pelan Pengajian",
-    "2. Silibus",
-    "3. Jadual Spesifikasi",
-    "4. EES",
-    "5. Penilaian Berterusan",
-    "6. Peperiksaan Akhir",
-    "7. Analisis CDL–CQI"
-])
+# --- SENARAI FAIL YANG TELAH DIMUAT NAIK ---
+st.subheader("📄 Senarai Fail Yang Telah Dimuat Naik")
+c.execute("SELECT file_type, file_description, filename, uploaded_at FROM uploaded_files WHERE subject_code=? ORDER BY uploaded_at DESC", (selected_code,))
+rows = c.fetchall()
 
-# Subkategori mengikut pilihan
-sub_category = ""
-if main_category == "2. Silibus":
-    sub_category = st.selectbox("📑 Subkategori Silibus", ["Course Information", "Scheme of Work", "Student Learning Time"])
-elif main_category == "5. Penilaian Berterusan":
-    sub_category = st.selectbox("📑 Subkategori PBS", ["Kuiz", "Ujian", "Tugasan", "Rubrik"])
-elif main_category == "7. Analisis CDL–CQI":
-    sub_category = st.text_input("📑 Seksyen/Kelas", placeholder="Contoh: CS241-S1")
+if rows:
+    for row in rows:
+        st.markdown(f"""
+        ✅ **{row[0]} – {row[1]}**  
+        🕒 {row[3]}  
+        📎 `{row[2]}`  
+        """)
 else:
-    sub_category = ""
+    st.info("Tiada fail dimuat naik untuk subjek ini.")
 
-# Input tajuk fail dan fail PDF
-file_description = st.text_input("📝 Tajuk Fail / Keterangan", placeholder="Contoh: Kuiz Topik 2, Assignment 1")
-uploaded_file = st.file_uploader("📤 Pilih Fail PDF", type=["pdf"])
+st.divider()
+
+# --- BORANG MUAT NAIK ---
+st.subheader("📥 Muat Naik Fail Baharu")
+file_type = st.selectbox("Jenis Fail", ["RPS", "RPH", "Rubrik", "Nota", "Soalan", "Kuiz", "Ujian", "Assignment"])
+file_description = st.text_input("Tajuk Fail / Keterangan", placeholder="Contoh: Assignment 1, Kuiz Topik 2")
+uploaded_file = st.file_uploader("Pilih Fail PDF", type=["pdf"])
 
 if uploaded_file and file_description and st.button("Muat Naik"):
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     clean_desc = file_description.replace(" ", "_").replace("/", "_")
-    main_code = main_category.split(".")[0]
-    full_category = main_category if not sub_category else f"{main_category} – {sub_category}"
-    filename = f"{selected_code}_{main_code}_{clean_desc}_{timestamp}.pdf"
+    filename = f"{selected_code}_{file_type}_{clean_desc}_{timestamp}.pdf"
     filepath = os.path.join(UPLOAD_DIR, filename)
 
-    # Simpan fail fizikal
     with open(filepath, "wb") as f:
         f.write(uploaded_file.read())
 
-    # Simpan maklumat ke DB
-    c.execute("""
-        INSERT INTO uploads (subject_code, category, file_name, uploader, upload_time)
-        VALUES (?, ?, ?, ?, ?)
-    """, (
-        selected_code,
-        full_category,
-        filename,
-        st.session_state.username,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ))
+    c.execute(
+        "INSERT INTO uploaded_files (subject_code, file_type, file_description, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (selected_code, file_type, file_description, filename, st.session_state.user_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    )
     conn.commit()
-    st.success("✅ Fail berjaya dimuat naik!")
+    st.success("✅ Fail berjaya dimuat naik.")
+    st.rerun()
 
 elif uploaded_file and not file_description:
-    st.warning("❗ Sila isikan tajuk atau keterangan fail sebelum muat naik.")
+    st.warning("Sila isikan tajuk atau keterangan fail sebelum muat naik.")
 
 conn.close()
